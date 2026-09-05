@@ -44,8 +44,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
   const [branch, setBranch] = useState<'ECE' | 'CSE' | 'EEE' | 'Mechanical' | 'Civil'>('ECE');
   const [year, setYear] = useState('3rd Year');
   const [careerGoal, setCareerGoal] = useState('Embedded Systems Engineer');
-  const [cgpa, setCgpa] = useState('8.5');
-
+  const [cgpa, setCgpa] = useState('');
   // Industry Fields
   const [companyName, setCompanyName] = useState('');
   const [industrySector, setIndustrySector] = useState('Semiconductor & Embedded IoT');
@@ -393,15 +392,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Target Career Goal</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">CGPA *</label>
                   <input
-                    type="text"
-                    value={careerGoal}
-                    placeholder="e.g. Embedded Firmware Engineer"
-                    onChange={(e) => setCareerGoal(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 8.5"
+                    value={cgpa}
+                    onChange={(e) => setCgpa(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">Target Career Goal</label>
+                <input
+                  type="text"
+                  value={careerGoal}
+                  placeholder="e.g. Embedded Firmware Engineer"
+                  onChange={(e) => setCareerGoal(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
               </div>
             </div>
           )}
