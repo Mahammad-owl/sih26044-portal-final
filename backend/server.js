@@ -23,12 +23,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static uploads directory for media evidence
-const uploadsDir = path.join(__dirname, 'uploads');
 const fs = require('fs');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+
+if (process.env.VERCEL !== '1') {
+  const uploadsDir = path.join(__dirname, 'uploads');
+
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  app.use('/uploads', express.static(uploadsDir));
 }
-app.use('/uploads', express.static(uploadsDir));
 
 // Routes
 const authRoutes = require('./routes/auth');
