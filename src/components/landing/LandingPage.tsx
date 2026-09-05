@@ -18,12 +18,14 @@ import {
   Activity,
   Zap,
   Target,
-  FileBadge
+  FileBadge,
+  UserPlus,
+  LogIn
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
 export const LandingPage: React.FC = () => {
-  const { loginAs, setStudentTab } = useApp();
+  const { loginAs, setStudentTab, openAuthModal } = useApp();
 
   const disciplines = [
     { name: 'ECE', skills: 'Embedded Systems, VLSI, IoT Telemetry, PCB Design', icon: Cpu, color: 'text-indigo-400 border-indigo-500/30' },
@@ -51,70 +53,77 @@ export const LandingPage: React.FC = () => {
             A unified national platform connecting <strong className="text-white">Students ↔ Academia ↔ Industry</strong> for evidence-based skill verification, real-time gap analysis, personalized roadmaps, and explainable internship matching across all engineering disciplines.
           </p>
 
-          {/* Quick Demo Launch Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          {/* Primary Action Buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+            <button
+              onClick={() => openAuthModal('register')}
+              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm flex items-center gap-2.5 transition-all shadow-lg shadow-emerald-600/30 hover:scale-[1.02]"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>Register New Account</span>
+            </button>
+
+            <button
+              onClick={() => openAuthModal('login')}
+              className="px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2.5 transition-all shadow-lg shadow-indigo-600/30 hover:scale-[1.02]"
+            >
+              <LogIn className="w-5 h-5" />
+              <span>Sign In with Credentials</span>
+            </button>
+
             <button
               onClick={() => {
                 loginAs('student');
                 setStudentTab('dashboard');
               }}
-              className="px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2.5 transition-all shadow-lg shadow-indigo-600/30 hover:scale-[1.02]"
-            >
-              <GraduationCap className="w-5 h-5" />
-              <span>Launch Student Portal (Hero Demo)</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => loginAs('industry')}
               className="px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-semibold text-sm flex items-center gap-2.5 transition-all"
             >
-              <Building2 className="w-5 h-5 text-indigo-400" />
-              <span>Industry Recruiter View</span>
-            </button>
-
-            <button
-              onClick={() => loginAs('admin')}
-              className="px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-semibold text-sm flex items-center gap-2.5 transition-all"
-            >
-              <BarChart3 className="w-5 h-5 text-amber-400" />
-              <span>Institution Analytics</span>
+              <GraduationCap className="w-5 h-5 text-indigo-400" />
+              <span>Fast Judge Demo (Ananya ECE)</span>
+              <ArrowRight className="w-4 h-4 text-slate-400" />
             </button>
           </div>
 
-          {/* Quick Demo Accounts Banner */}
-          <div className="pt-6 max-w-2xl mx-auto">
-            <p className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2.5">
-              1-Click Demo Accounts (No Setup Required)
-            </p>
+          {/* Preloaded Demo Accounts Grid */}
+          <div className="pt-6 max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-400">
+                1-Click Judge Demo Identities (No Typing Required)
+              </span>
+              <span className="text-[11px] text-indigo-400 font-mono">Password: demo123</span>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <button
                 onClick={() => loginAs('student')}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
               >
-                <span className="text-[10px] text-slate-500 block">Student Role</span>
-                <span className="font-semibold text-slate-200 group-hover:text-indigo-400">student@demo.com</span>
+                <span className="text-[10px] text-indigo-400 font-bold block">Student Role</span>
+                <span className="font-semibold text-slate-200 group-hover:text-white block truncate">student.demo@demo.sih</span>
+                <span className="text-[10px] text-slate-500">Ananya (ECE, 3rd Yr)</span>
               </button>
               <button
                 onClick={() => loginAs('industry')}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
               >
-                <span className="text-[10px] text-slate-500 block">Industry Recruiter</span>
-                <span className="font-semibold text-slate-200 group-hover:text-indigo-400">industry@demo.com</span>
+                <span className="text-[10px] text-sky-400 font-bold block">Industry Role</span>
+                <span className="font-semibold text-slate-200 group-hover:text-white block truncate">industry.demo@demo.sih</span>
+                <span className="text-[10px] text-slate-500">Bosch Talent Gateway</span>
               </button>
               <button
                 onClick={() => loginAs('faculty')}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
               >
-                <span className="text-[10px] text-slate-500 block">Faculty Mentor</span>
-                <span className="font-semibold text-slate-200 group-hover:text-indigo-400">faculty@demo.com</span>
+                <span className="text-[10px] text-emerald-400 font-bold block">Academia Role</span>
+                <span className="font-semibold text-slate-200 group-hover:text-white block truncate">academia.demo@demo.sih</span>
+                <span className="text-[10px] text-slate-500">Dr. Ramesh (HOD ECE)</span>
               </button>
               <button
                 onClick={() => loginAs('admin')}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
               >
-                <span className="text-[10px] text-slate-500 block">Institution Admin</span>
-                <span className="font-semibold text-slate-200 group-hover:text-indigo-400">admin@demo.com</span>
+                <span className="text-[10px] text-amber-400 font-bold block">Admin Role</span>
+                <span className="font-semibold text-slate-200 group-hover:text-white block truncate">admin.demo@demo.sih</span>
+                <span className="text-[10px] text-slate-500">NIT Dean Admin</span>
               </button>
             </div>
           </div>

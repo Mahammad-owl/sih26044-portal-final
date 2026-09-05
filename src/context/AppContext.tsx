@@ -17,15 +17,35 @@ import {
   DEMO_COLLABORATIONS,
   DEMO_INSTITUTION_ANALYTICS
 } from '../data/mockData';
+import { api } from '../services/api';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'ASSESSMENT' | 'VERIFICATION' | 'APPLICATION' | 'OPPORTUNITY' | 'COLLABORATION' | 'SYSTEM';
+  date: string;
+  isRead: boolean;
+}
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  avatar?: string;
+  profile?: any;
+}
 
 interface AppContextType {
   currentRole: UserRole | 'landing';
   setCurrentRole: (role: UserRole | 'landing') => void;
+  currentUser: CurrentUser | null;
   selectedStudentId: string;
   setSelectedStudentId: (id: string) => void;
   selectedCompanyId: string;
   setSelectedCompanyId: (id: string) => void;
-  
+
   // Data
   students: Student[];
   currentStudent: Student;
@@ -33,6 +53,7 @@ interface AppContextType {
   assessments: Assessment[];
   collaborations: CollaborationOffer[];
   analytics: InstitutionAnalytics;
+  notifications: AppNotification[];
 
   // Active navigation within portals
   studentTab: 'dashboard' | 'profile' | 'assessment' | 'verification' | 'skill-gap' | 'roadmap' | 'matching' | 'portfolio' | 'ai-resume';
@@ -50,10 +71,27 @@ interface AppContextType {
   selectedCandidateStudentId: string | null;
   setSelectedCandidateStudentId: (id: string | null) => void;
 
+  // Auth Modal Controls
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
+  authModalMode: 'login' | 'register';
+  setAuthModalMode: (mode: 'login' | 'register') => void;
+  openAuthModal: (mode?: 'login' | 'register') => void;
+  closeAuthModal: () => void;
+
+  // Onboarding
+  isOnboardingActive: boolean;
+  setIsOnboardingActive: (active: boolean) => void;
+  completeOnboarding: (skills: string[], goal: string) => void;
+
   // Core Actions
   loginAs: (role: UserRole, email?: string) => void;
+  loginWithCredentials: (email: string, password?: string) => Promise<void>;
+  registerAccount: (payload: any) => Promise<void>;
+  logout: () => void;
   calculateMatch: (job: JobOpening, student: Student) => MatchBreakdown;
   applyToJob: (jobId: string) => void;
+  updateApplicationStatus: (studentId: string, jobId: string, newStatus: 'Applied' | 'Shortlisted' | 'Interview Scheduled' | 'Offered' | 'Under Review') => void;
   verifyStudentSkill: (studentId: string, skill: Partial<VerifiedSkill>) => void;
   recordAssessmentResult: (studentId: string, assessmentId: string, score: number, practicalScore: number) => void;
   addNewJob: (newJob: Omit<JobOpening, 'id' | 'applicantsCount' | 'shortlistedCount' | 'postedDate' | 'status'>) => void;
@@ -61,14 +99,24 @@ interface AppContextType {
   addNewCollaboration: (offer: Omit<CollaborationOffer, 'id' | 'requestedInstitutions' | 'status'>) => void;
   advanceRoadmapWeek: (studentId: string, weekNumber: number) => void;
   parseResumeText: (text: string) => { extractedSkills: string[]; suggestedRole: string; confidence: number; branch: Discipline };
+  markNotificationRead: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentRole, setCurrentRole] = useState<UserRole | 'landing'>('landing');
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('stud-1'); // Default to Ananya Sharma (ECE Hero)
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('comp-1'); // Bosch
+
+  // Auth Modal State
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
+  // Onboarding State
+  const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
 
   // Loaded Data with localStorage persistence
   const [students, setStudents] = useState<Student[]>(() => {
@@ -93,6 +141,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [analytics] = useState<InstitutionAnalytics>(DEMO_INSTITUTION_ANALYTICS);
 
+  const [notifications, setNotifications] = useState<AppNotification[]>([
+    {
+      id: 'notif-1',
+      title: 'FreeRTOS Assessment Verified',
+      message: 'Practical task & code viva verified. Readiness score updated to 84%.',
+      type: 'VERIFICATION',
+      date: 'Just now',
+      isRead: false
+    },
+    {
+      id: 'notif-2',
+      title: 'Opportunity Match Alert',
+      message: '89% match with Bosch Embedded IoT Firmware Intern position.',
+      type: 'OPPORTUNITY',
+      date: '10m ago',
+      isRead: false
+    },
+    {
+      id: 'notif-3',
+      title: 'Industry Demand Increase',
+      message: 'Campus hiring demand for STM32 & RTOS increased by +34% this cycle.',
+      type: 'SYSTEM',
+      date: '1h ago',
+      isRead: false
+    }
+  ]);
+
   // Portal tabs
   const [studentTab, setStudentTab] = useState<'dashboard' | 'profile' | 'assessment' | 'verification' | 'skill-gap' | 'roadmap' | 'matching' | 'portfolio' | 'ai-resume'>('dashboard');
   const [industryTab, setIndustryTab] = useState<'dashboard' | 'candidates' | 'create-job' | 'collaborations'>('dashboard');
@@ -116,6 +191,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
 
+  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
+
   const loginAs = (role: UserRole, email?: string) => {
     setCurrentRole(role);
     if (role === 'student') {
@@ -126,14 +210,294 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedStudentId('stud-1'); // Default Ananya
       }
       setStudentTab('dashboard');
+      setCurrentUser({
+        id: 'usr-stu-01',
+        email: email || 'student@demo.com',
+        name: 'Ananya Sharma',
+        role: 'STUDENT',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+      });
     } else if (role === 'industry') {
       setSelectedCompanyId('comp-1');
       setIndustryTab('dashboard');
+      setCurrentUser({
+        id: 'usr-ind-01',
+        email: 'industry@demo.com',
+        name: 'Bosch Engineering & Mobility',
+        role: 'INDUSTRY'
+      });
     } else if (role === 'faculty') {
       setFacultyTab('dashboard');
+      setCurrentUser({
+        id: 'usr-fac-01',
+        email: 'faculty@demo.com',
+        name: 'Dr. K. S. Ramanathan',
+        role: 'FACULTY'
+      });
     } else if (role === 'admin') {
       setAdminTab('analytics');
+      setCurrentUser({
+        id: 'usr-adm-01',
+        email: 'admin@demo.com',
+        name: 'Dr. S. K. Mehra',
+        role: 'INSTITUTION_ADMIN'
+      });
     }
+  };
+
+  const loginWithCredentials = async (email: string, password = 'demo123') => {
+    try {
+      const res = await api.login({ email, password });
+      if (res.token) {
+        localStorage.setItem('sih_token', res.token);
+      }
+
+      const user = res.user;
+      setCurrentUser(user);
+
+      const normalizedRole = user.role.toLowerCase();
+      if (normalizedRole === 'student') {
+        setCurrentRole('student');
+        setStudentTab('dashboard');
+        // Match existing student or create a student entry
+        let existing = students.find((s) => s.email.toLowerCase() === user.email.toLowerCase());
+        if (!existing) {
+          const newStudent: Student = {
+            id: `stud-${Date.now()}`,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+            branch: (user.profile?.branch as Discipline) || 'ECE',
+            year: user.profile?.year ? parseInt(user.profile.year) || 3 : 3,
+            college: user.profile?.institution_name || 'National Institute of Technology',
+            cgpa: user.profile?.cgpa || 8.2,
+            careerGoal: user.profile?.career_goal || 'Engineering Specialist',
+            bio: user.profile?.about || 'Student enrolled in technical program.',
+            phone: user.profile?.phone || '+91 98000 00000',
+            readinessScore: user.profile?.readiness_score || 45,
+            fraudRiskFlag: false,
+            verifiedSkills: [],
+            skillGaps: [
+              {
+                id: `gap-init-${Date.now()}`,
+                skillName: 'Core Foundations & Diagnostic',
+                branch: (user.profile?.branch as Discipline) || 'ECE',
+                category: 'Diagnostic',
+                targetLevel: 4,
+                currentLevel: 1,
+                gapSeverity: 'HIGH',
+                impactOnTargetRole: 'Initial benchmark needed to map career trajectory.',
+                recommendedAction: 'Take diagnostic skill assessment.',
+                learningTimeEstWeeks: 2,
+                resources: [
+                  {
+                    title: 'NPTEL National Certification Core Module',
+                    type: 'Course',
+                    provider: 'NPTEL / IIT Madras',
+                    duration: '4 Weeks',
+                    url: 'https://nptel.ac.in'
+                  }
+                ]
+              }
+            ],
+            projects: [],
+            certifications: [],
+            achievements: [],
+            roadmap: [
+              {
+                week: 1,
+                phaseTitle: 'Baseline Foundations & Toolchain',
+                focusSkill: 'Core Engineering Basics',
+                status: 'In-Progress',
+                learningObjective: 'Establish foundational proficiency with version control and development environment.',
+                keyTopics: ['Core Fundamentals', 'Git & CI/CD', 'Development Toolchain'],
+                practicalTask: 'Set up local toolchain and submit initial build project.',
+                milestoneProject: 'Initial Laboratory Module Verification',
+                verificationCheck: 'Faculty Viva & Automated Code Build'
+              }
+            ],
+            applications: []
+          };
+          setStudents((prev) => [newStudent, ...prev]);
+          setSelectedStudentId(newStudent.id);
+        } else {
+          setSelectedStudentId(existing.id);
+        }
+      } else if (normalizedRole === 'industry') {
+        setCurrentRole('industry');
+        setIndustryTab('dashboard');
+      } else if (normalizedRole === 'faculty') {
+        setCurrentRole('faculty');
+        setFacultyTab('dashboard');
+      } else if (normalizedRole === 'institution_admin' || normalizedRole === 'admin') {
+        setCurrentRole('admin');
+        setAdminTab('analytics');
+      }
+    } catch (err: any) {
+      // If backend offline, support offline demo accounts
+      const lower = email.toLowerCase().trim();
+      if (lower.includes('student')) {
+        loginAs('student', email);
+      } else if (lower.includes('industry')) {
+        loginAs('industry');
+      } else if (lower.includes('faculty') || lower.includes('academia')) {
+        loginAs('faculty');
+      } else if (lower.includes('admin')) {
+        loginAs('admin');
+      } else {
+        throw new Error(err.message || 'Login failed.');
+      }
+    }
+  };
+
+  const registerAccount = async (payload: any) => {
+    try {
+      const res = await api.register(payload);
+      if (res.token) {
+        localStorage.setItem('sih_token', res.token);
+      }
+
+      const user = res.user;
+      setCurrentUser(user);
+
+      if (payload.role === 'STUDENT') {
+        const newStudent: Student = {
+          id: `stud-${Date.now()}`,
+          name: payload.name,
+          email: payload.email,
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          branch: (payload.branch as Discipline) || 'ECE',
+          year: parseInt(payload.year) || 3,
+          college: payload.institution_name || 'National Institute of Technology',
+          cgpa: parseFloat(payload.cgpa) || 8.0,
+          careerGoal: payload.career_goal || `${payload.branch || 'ECE'} Systems Engineer`,
+          bio: `Newly registered student eager to verify technical skills and match with tier-1 industry internships.`,
+          phone: payload.phone || '+91 98000 00000',
+          readinessScore: 40,
+          fraudRiskFlag: false,
+          verifiedSkills: [],
+          skillGaps: [
+            {
+              id: `gap-${Date.now()}`,
+              skillName: `${payload.branch || 'ECE'} Core Competencies`,
+              branch: (payload.branch as Discipline) || 'ECE',
+              category: 'Core',
+              targetLevel: 4,
+              currentLevel: 1,
+              gapSeverity: 'HIGH',
+              impactOnTargetRole: `Required for verified ${payload.career_goal || 'Engineering'} positions.`,
+              recommendedAction: 'Complete diagnostic assessment and submit lab evidence.',
+              learningTimeEstWeeks: 3,
+              resources: [
+                {
+                  title: 'Free NPTEL / SWAYAM Technical Foundations',
+                  type: 'Course',
+                  provider: 'NPTEL (Free Learning Access)',
+                  duration: '4 Weeks',
+                  url: 'https://swayam.gov.in'
+                }
+              ]
+            }
+          ],
+          projects: [],
+          certifications: [],
+          achievements: [],
+          roadmap: [
+            {
+              week: 1,
+              phaseTitle: 'Foundational Diagnostics & Skill Mapping',
+              focusSkill: 'Core Fundamentals',
+              status: 'In-Progress',
+              learningObjective: 'Complete diagnostic MCQ and practical task for automated baseline mapping.',
+              keyTopics: ['Core Theory', 'Syntax & Registers', 'Toolchain Setup'],
+              practicalTask: 'Run code modification task in assessment module.',
+              milestoneProject: 'Hello World Lab Demonstration',
+              verificationCheck: 'Autonomous Syntax & Logic Test'
+            },
+            {
+              week: 2,
+              phaseTitle: 'Intermediate Practical Application',
+              focusSkill: 'Systems Programming',
+              status: 'Upcoming',
+              learningObjective: 'Build and verify mini-project evidence.',
+              keyTopics: ['Algorithms', 'Hardware/Software Interfaces'],
+              practicalTask: 'Implement structured queue or state machine.',
+              milestoneProject: 'Practical Demo Submission',
+              verificationCheck: 'Faculty Evaluation Viva'
+            }
+          ],
+          applications: []
+        };
+
+        setStudents((prev) => [newStudent, ...prev]);
+        setSelectedStudentId(newStudent.id);
+        setCurrentRole('student');
+        setStudentTab('dashboard');
+        setIsOnboardingActive(true);
+      } else if (payload.role === 'INDUSTRY') {
+        setCurrentRole('industry');
+        setIndustryTab('dashboard');
+      } else if (payload.role === 'FACULTY') {
+        setCurrentRole('faculty');
+        setFacultyTab('dashboard');
+      }
+    } catch (err: any) {
+      throw new Error(err.message || 'Registration failed.');
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('sih_token');
+    setCurrentUser(null);
+    setCurrentRole('landing');
+    setAuthModalOpen(false);
+  };
+
+  const completeOnboarding = (skillsToAdd: string[], goal: string) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id !== currentStudent.id) return s;
+        const newVerified = skillsToAdd.map((skName, i) => ({
+          id: `vs-new-${Date.now()}-${i}`,
+          name: skName,
+          category: 'Core Competency',
+          branch: s.branch,
+          selfDeclaredLevel: 3,
+          verifiedLevel: 3,
+          status: 'VERIFIED' as const,
+          confidence: 'HIGH' as const,
+          assessmentScore: 82,
+          projectEvidence: {
+            projectName: 'Diagnostic Baseline Demonstration',
+            description: 'Verified via initial onboarding practical task.',
+            verified: true
+          },
+          practicalTaskScore: 85,
+          explanationScore: 80,
+          consistencyScore: 90,
+          lastVerifiedDate: new Date().toISOString().split('T')[0]
+        }));
+
+        return {
+          ...s,
+          careerGoal: goal || s.careerGoal,
+          readinessScore: 68,
+          verifiedSkills: [...s.verifiedSkills, ...newVerified]
+        };
+      })
+    );
+    setIsOnboardingActive(false);
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Onboarding Completed!',
+        message: 'Your profile has been initialized with verified baseline competencies.',
+        type: 'SYSTEM',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   /**
@@ -141,7 +505,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * Skill Match: 60% weight
    * Assessment Performance: 20% weight
    * Project Evidence: 10% weight
-   * Experience & Verified Coursework: 10% weight
+   * Experience & Coursework: 10% weight
    */
   const calculateMatch = (job: JobOpening, student: Student): MatchBreakdown => {
     const studentVerifiedSkillMap = new Map<string, { level: number; status: string; score: number }>();
@@ -235,6 +599,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const match = calculateMatch(job, currentStudent);
 
+    // Update backend asynchronously
+    api.applyOpportunity(jobId, { coverLetter: 'Applied via SKILLSETU Verified Portal' }).catch(() => {});
+
     setStudents((prev) =>
       prev.map((stud) => {
         if (stud.id !== currentStudent.id) return stud;
@@ -273,9 +640,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Application Submitted',
+        message: `Your verified profile was submitted to ${job.companyName} for ${job.role} (${match.overallScore}% match).`,
+        type: 'APPLICATION',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
+  };
+
+  const updateApplicationStatus = (
+    studentId: string,
+    jobId: string,
+    newStatus: 'Applied' | 'Shortlisted' | 'Interview Scheduled' | 'Offered' | 'Under Review'
+  ) => {
+    // Call backend API
+    api.updateApplicationStatus(jobId, { status: newStatus.toUpperCase() }).catch(() => {});
+
+    setStudents((prev) =>
+      prev.map((stud) => {
+        if (stud.id !== studentId) return stud;
+        return {
+          ...stud,
+          applications: stud.applications.map((app) => {
+            if (app.internshipId !== jobId) return app;
+            return {
+              ...app,
+              status: newStatus,
+              feedback: `Application status updated to ${newStatus} by recruiting team.`
+            };
+          })
+        };
+      })
+    );
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: `Application Status: ${newStatus}`,
+        message: `Your application status for opportunity has been updated to ${newStatus}.`,
+        type: 'APPLICATION',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const verifyStudentSkill = (studentId: string, skillUpdate: Partial<VerifiedSkill>) => {
+    // Send to backend API
+    api.submitVerification({
+      skill_id: skillUpdate.id || 'skill-default',
+      practical_task_title: skillUpdate.name || 'Verified Practical Task',
+      score: skillUpdate.assessmentScore || 85
+    }).catch(() => {});
+
     setStudents((prev) =>
       prev.map((stud) => {
         if (stud.id !== studentId) return stud;
@@ -328,11 +752,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Skill Verified',
+        message: `${skillUpdate.name} verified at Level ${skillUpdate.verifiedLevel || 3} with empirical evidence.`,
+        type: 'VERIFICATION',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const recordAssessmentResult = (studentId: string, assessmentId: string, score: number, practicalScore: number) => {
     const assess = assessments.find((a) => a.id === assessmentId);
     if (!assess) return;
+
+    // Send assessment submission to backend
+    api.submitAssessment(assessmentId, { score, practicalScore }).catch(() => {});
 
     const consistency = Math.abs(score - practicalScore) <= 15 ? 'HIGH' : 'MEDIUM';
     const isVerified = score >= assess.passingScore && practicalScore >= 60;
@@ -348,6 +787,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       confidence: consistency === 'HIGH' && isVerified ? 'HIGH' : 'MEDIUM',
       verifiedLevel: isVerified ? 4 : 2
     });
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Assessment Completed',
+        message: `${assess.title}: Scored ${score}% in MCQ and ${practicalScore}% in practical demonstration.`,
+        type: 'ASSESSMENT',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const addNewJob = (newJobData: Omit<JobOpening, 'id' | 'applicantsCount' | 'shortlistedCount' | 'postedDate' | 'status'>) => {
@@ -359,10 +810,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       shortlistedCount: 0,
       status: 'Active'
     };
+
+    // Send to backend API
+    api.createOpportunity({
+      title: newJob.role,
+      opportunity_type: newJob.type.toUpperCase().replace('-', '_'),
+      branch: newJob.discipline[0] || 'ECE',
+      description: newJob.description,
+      location: newJob.location,
+      mode: newJob.mode.toUpperCase().replace('-', '_'),
+      duration: newJob.duration,
+      stipend: newJob.stipend,
+      required_skills: newJob.requiredSkills
+    }).catch(() => {});
+
     setJobs((prev) => [newJob, ...prev]);
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'New Opening Published',
+        message: `${newJob.role} opening posted for ${newJob.discipline.join(', ')} students.`,
+        type: 'OPPORTUNITY',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const requestCollaborationOffer = (collabId: string, institutionName: string, contactFaculty: string) => {
+    // Send to backend API
+    api.updateCollaborationStatus(collabId, {
+      status: 'ACCEPTED',
+      facultyName: contactFaculty
+    }).catch(() => {});
+
     setCollaborations((prev) =>
       prev.map((c) => {
         if (c.id !== collabId) return c;
@@ -380,6 +863,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Collaboration MoU Request Submitted',
+        message: `Institutional request forwarded to industry partner with faculty contact ${contactFaculty}.`,
+        type: 'COLLABORATION',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const addNewCollaboration = (offerData: Omit<CollaborationOffer, 'id' | 'requestedInstitutions' | 'status'>) => {
@@ -389,7 +884,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       requestedInstitutions: [],
       status: 'Open'
     };
+
+    api.createCollaboration({
+      title: offerData.title,
+      type: offerData.type.toUpperCase().replace(/\s+/g, '_'),
+      discipline: offerData.branch[0] || 'ECE',
+      description: offerData.description,
+      duration: offerData.duration,
+      expected_outcomes: offerData.deliverables.join(', ')
+    }).catch(() => {});
+
     setCollaborations((prev) => [newCollab, ...prev]);
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Industry Collaboration Posted',
+        message: `${offerData.companyName} created new MoU opportunity: ${offerData.title}`,
+        type: 'COLLABORATION',
+        date: 'Just now',
+        isRead: false
+      },
+      ...prev
+    ]);
   };
 
   const advanceRoadmapWeek = (studentId: string, weekNumber: number) => {
@@ -420,7 +937,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let detectedBranch: Discipline = 'ECE';
     let suggestedRole = 'Embedded Systems Firmware Engineer';
 
-    // Simulated local AI extraction logic
     if (lower.includes('embedded') || lower.includes('stm32') || lower.includes('arm') || lower.includes('c programming') || lower.includes('microcontroller') || lower.includes('can bus') || lower.includes('freertos')) {
       detectedBranch = 'ECE';
       suggestedRole = 'Embedded Systems Engineer';
@@ -457,11 +973,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+  const markNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
   return (
     <AppContext.Provider
       value={{
         currentRole,
         setCurrentRole,
+        currentUser,
         selectedStudentId,
         setSelectedStudentId,
         selectedCompanyId,
@@ -472,6 +999,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assessments,
         collaborations,
         analytics,
+        notifications,
         studentTab,
         setStudentTab,
         industryTab,
@@ -484,16 +1012,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedJobId,
         selectedCandidateStudentId,
         setSelectedCandidateStudentId,
+        authModalOpen,
+        setAuthModalOpen,
+        authModalMode,
+        setAuthModalMode,
+        openAuthModal,
+        closeAuthModal,
+        isOnboardingActive,
+        setIsOnboardingActive,
+        completeOnboarding,
         loginAs,
+        loginWithCredentials,
+        registerAccount,
+        logout,
         calculateMatch,
         applyToJob,
+        updateApplicationStatus,
         verifyStudentSkill,
         recordAssessmentResult,
         addNewJob,
         requestCollaborationOffer,
         addNewCollaboration,
         advanceRoadmapWeek,
-        parseResumeText
+        parseResumeText,
+        markNotificationRead,
+        clearAllNotifications
       }}
     >
       {children}

@@ -4,6 +4,8 @@ import { DemoSwitcherBar } from './components/common/DemoSwitcherBar';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { AIResumeParserModal } from './components/common/AIResumeParserModal';
+import { AuthModal } from './components/common/AuthModal';
+import { StudentOnboardingModal } from './components/student/StudentOnboardingModal';
 import { LandingPage } from './components/landing/LandingPage';
 
 // Student Portal views
@@ -32,7 +34,18 @@ import { InstitutionAdminDashboard } from './components/admin/InstitutionAdminDa
 import { CollaborationHub } from './components/admin/CollaborationHub';
 
 const MainLayout: React.FC = () => {
-  const { currentRole, studentTab, industryTab, setIndustryTab, facultyTab, adminTab } = useApp();
+  const {
+    currentRole,
+    studentTab,
+    industryTab,
+    setIndustryTab,
+    facultyTab,
+    adminTab,
+    authModalOpen,
+    closeAuthModal,
+    authModalMode,
+    isOnboardingActive
+  } = useApp();
   const [showAIParser, setShowAIParser] = useState(false);
 
   if (currentRole === 'landing') {
@@ -40,6 +53,13 @@ const MainLayout: React.FC = () => {
       <div className="min-h-screen flex flex-col bg-[#090d16]">
         <DemoSwitcherBar />
         <LandingPage />
+        {authModalOpen && (
+          <AuthModal
+            isOpen={authModalOpen}
+            onClose={closeAuthModal}
+            initialMode={authModalMode}
+          />
+        )}
       </div>
     );
   }
@@ -186,6 +206,8 @@ const MainLayout: React.FC = () => {
       </div>
 
       {showAIParser && <AIResumeParserModal onClose={() => setShowAIParser(false)} />}
+      {authModalOpen && <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialMode={authModalMode} />}
+      {isOnboardingActive && <StudentOnboardingModal />}
     </div>
   );
 };

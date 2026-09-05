@@ -37,23 +37,26 @@ Follow this exact walkthrough during the demonstration:
 
 ---
 
-## 🔑 Demo Accounts (Instant 1-Click Access)
+## 🔑 Demo Accounts (Instant 1-Click Access or Manual Sign-In)
 
-No complicated setup or database configurations required. Use the top demo switcher bar or login directly with:
+Use the top demo switcher bar or log in with credentials (password for all demo accounts: `demo123`):
 
-* **Student Role**: `student@demo.com` *(Ananya Sharma - ECE Embedded Firmware Hero)*
-* **Industry Role**: `industry@demo.com` *(Bosch Engineering & Mobility Solutions)*
-* **Faculty / Academia**: `faculty@demo.com` *(Dr. K. S. Ramanathan - Head of Dept, ECE)*
-* **Institution Admin**: `admin@demo.com` *(NIT Dean of Industry Relations & Placements)*
+* **Student Role**: `student.demo@demo.sih` / `student@demo.com` *(Ananya Sharma - ECE Embedded Firmware Hero)*
+* **Industry Role**: `industry.demo@demo.sih` / `industry@demo.com` *(Bosch Engineering & Mobility Solutions)*
+* **Faculty / Academia**: `academia.demo@demo.sih` / `faculty@demo.com` *(Dr. K. S. Ramanathan - Head of Dept, ECE)*
+* **Institution Admin**: `admin.demo@demo.sih` / `admin@demo.com` *(NIT Dean of Industry Relations & Placements)*
+
+> **New Account Registration**: The portal also features a real registration flow (`POST /api/auth/register`) for Students, Industry partners, and Academia, with data stored persistently in the SQLite database.
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
 
 * **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide React Icons, Canvas Confetti.
-* **Build System**: Vite 6 (ultra-fast HMR, sub-450KB production bundle).
-* **Data Layer**: Centralized immutable mock models with `localStorage` state persistence.
-* **Offline Ready**: 100% self-contained, requiring zero external API keys or cloud dependencies.
+* **Backend**: Node.js, Express.js REST API with JWT authentication and bcrypt password hashing.
+* **Database**: SQLite 3 (`better-sqlite3`) with 22 normalized relational tables at `database/sih_portal.sqlite`.
+* **Build System**: Vite 6 (ultra-fast HMR, sub-460KB production bundle) with `/api` reverse proxy.
+* **Zero Paid Dependencies**: 100% self-contained, requiring zero external API keys or cloud subscriptions.
 
 ---
 
@@ -63,21 +66,26 @@ No complicated setup or database configurations required. Use the top demo switc
 * Node.js (v18 or higher)
 * npm (v9 or higher)
 
-### 2. Installation & Launch
+### 2. Quick Launch (Two Terminals)
+
+**Terminal 1 — Backend Server (Port 5000):**
 ```bash
-# Clone or navigate to the project directory
-cd /path/to/SIH
+npm run server
+```
 
-# Install dependencies
-npm install
-
-# Start development server
+**Terminal 2 — Frontend Development Server (Port 5173):**
+```bash
 npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 3. Production Build & Preview
+### 3. Reset / Seed Database (Optional)
+```bash
+npm run seed
+```
+
+### 4. Production Build
 ```bash
 npm run build
 npm run preview
@@ -85,8 +93,17 @@ npm run preview
 
 ---
 
-## 🏆 Key SIH26044 Innovations
+## 📚 Complete Project Documentation Index
 
-1. **Anti-Fraud Without False Claims**: Respects real-world AI usage by focusing on student comprehension, live code explanation, and hardware verification rather than unreliable AI text detectors.
-2. **Transparent Explainability**: Every match percentage is fully auditable into 60% skill alignment, 20% assessment score, 10% project evidence, and 10% verified coursework.
-3. **Core Engineering Focus**: Full multi-branch support with realistic scenarios for Embedded Systems (ECE), Power Electronics/BMS (EEE), Robotics CAD/FEA (Mechanical), and 4D BIM/Seismic (Civil).
+For exhaustive technical handovers, refer to the documentation files in the repository:
+
+1. **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)**: High-level overview, problem solved, stakeholder breakdown, technology stack, and folder structure.
+2. **[TECHNICAL_ARCHITECTURE.md](./TECHNICAL_ARCHITECTURE.md)**: System architecture, RBAC matrix, 60-20-10-10 matching algorithm formula, 7-stage verification engine, and sequence diagrams.
+3. **[DATABASE_DOCUMENTATION.md](./DATABASE_DOCUMENTATION.md)**: Detailed SQLite schema for all 22 tables, ER diagram, foreign key relationships, and query flows.
+4. **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)**: Complete REST API specification for all auth, student, assessment, verification, opportunity, and collaboration endpoints.
+5. **[FEATURE_GUIDE.md](./FEATURE_GUIDE.md)**: Comprehensive feature-by-feature audit with honest implementation statuses (`[IMPLEMENTED]`, `[SIMULATED]`).
+6. **[DEMO_GUIDE.md](./DEMO_GUIDE.md)**: 5–10 minute step-by-step judge demonstration script and technical deep-dive defense.
+7. **[JUDGE_QA.md](./JUDGE_QA.md)**: 37 critical technical and problem statement questions answered with complete fidelity.
+8. **[SETUP_AND_RUN.md](./SETUP_AND_RUN.md)**: Beginner-friendly zero-to-hero local installation, execution, and troubleshooting guide.
+9. **[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)**: Itemized readiness checklist of all features and architectural layers.
+10. **[JUDGE_EXPLANATION.md](./JUDGE_EXPLANATION.md)**: Conversational 3-minute verbal presentation speech for hackathon judges.
